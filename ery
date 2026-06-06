@@ -1,0 +1,623 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+_G.GradientLayers = _G.GradientLayers or 2
+_G.Color1 = _G.Color1 or Color3.new(1, 0, 0)
+_G.Color2 = _G.Color2 or Color3.new(0, 0, 1)
+_G.Color3_Val = _G.Color3_Val or Color3.new(0, 0, 0)
+_G.Color4 = _G.Color4 or Color3.new(1, 1, 0)
+_G.CustomGradientEnabled = _G.CustomGradientEnabled or false
+_G.RainbowLoopEnabled = _G.RainbowLoopEnabled or false
+local isReachApplied = false
+
+local oldGui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("CustomControlGui")
+if oldGui then oldGui:Destroy() end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CustomControlGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 260, 0, 280)
+MainFrame.Position = UDim2.new(0, 10, 0.5, -140)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 28)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.ClipsDescendants = false
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 6)
+MainCorner.Parent = MainFrame
+
+local BadgeContainer = Instance.new("Frame")
+BadgeContainer.Name = "BadgeContainer"
+BadgeContainer.Size = UDim2.new(0, 220, 0, 200)
+BadgeContainer.Position = UDim2.new(1, 10, 1, -200)
+BadgeContainer.BackgroundTransparency = 1
+BadgeContainer.Parent = MainFrame
+
+local UIListLayoutBadge = Instance.new("UIListLayout")
+UIListLayoutBadge.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayoutBadge.VerticalAlignment = Enum.VerticalAlignment.Bottom
+UIListLayoutBadge.Padding = UDim.new(0, 6)
+UIListLayoutBadge.Parent = BadgeContainer
+
+local function showBadge(text, color)
+    local badge = Instance.new("Frame")
+    badge.Size = UDim2.new(1, 0, 0, 42)
+    badge.BackgroundColor3 = color
+    badge.BackgroundTransparency = 1
+    badge.BorderSizePixel = 0
+    badge.Parent = BadgeContainer
+    
+    local bCorner = Instance.new("UICorner")
+    bCorner.CornerRadius = UDim.new(0, 6)
+    bCorner.Parent = badge
+    
+    local bLabel = Instance.new("TextLabel")
+    bLabel.Size = UDim2.new(1, -16, 1, 0)
+    bLabel.Position = UDim2.new(0, 8, 0, 0)
+    bLabel.BackgroundTransparency = 1
+    bLabel.Text = text
+    bLabel.TextColor3 = Color3.new(1, 1, 1)
+    bLabel.TextSize = 11
+    bLabel.Font = Enum.Font.SourceSansBold
+    bLabel.TextWrapped = true
+    bLabel.TextTransparency = 1
+    bLabel.Parent = badge
+
+    TweenService:Create(badge, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.15}):Play()
+    TweenService:Create(bLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+    
+    badge.Size = UDim2.new(1, 0, 0, 0)
+    badge:TweenSize(UDim2.new(1, 0, 0, 42), "Out", "Back", 0.4, true)
+
+    task.delay(3, function()
+        if badge and badge.Parent then
+            TweenService:Create(badge, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {BackgroundTransparency = 1}):Play()
+            TweenService:Create(bLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
+            badge:TweenSize(UDim2.new(1, 0, 0, 0), "In", "Quad", 0.3, true, function()
+                badge:Destroy()
+            end)
+        end
+    end)
+end
+
+local function updateGradient()
+    if not _G.CustomGradientEnabled then return end
+    if not ReplicatedStorage:FindFirstChild("DataEvents") then 
+        showBadge("오류: DataEvents 이벤트를 서버에서 찾을 수 없습니다.", Color3.fromRGB(220, 50, 50))
+        return 
+    end
+    
+    local success, err = pcall(function()
+        local points = {}
+        local layers = _G.GradientLayers
+        
+        if layers == 2 then
+            points = {ColorSequenceKeypoint.new(0, _G.Color1), ColorSequenceKeypoint.new(1, _G.Color2)}
+        elseif layers == 3 then
+            points = {ColorSequenceKeypoint.new(0, _G.Color1), ColorSequenceKeypoint.new(0.5, _G.Color2), ColorSequenceKeypoint.new(1, _G.Color3_Val)}
+        elseif layers == 4 then
+            points = {ColorSequenceKeypoint.new(0, _G.Color1), ColorSequenceKeypoint.new(0.33, _G.Color2), ColorSequenceKeypoint.new(0.66, _G.Color3_Val), ColorSequenceKeypoint.new(1, _G.Color4)}
+        end
+        
+        ReplicatedStorage.DataEvents.UpdateLineColorsEvent:FireServer(ColorSequence.new(points))
+    end)
+    
+    if not success then
+        showBadge("오류: 데이터 동기화 실패 (" .. tostring(err) .. ")", Color3.fromRGB(220, 50, 50))
+    end
+end
+
+local TopBar = Instance.new("Frame")
+TopBar.Name = "TopBar"
+TopBar.Size = UDim2.new(1, 0, 0, 28)
+TopBar.BackgroundColor3 = Color3.fromRGB(18, 18, 20)
+TopBar.BorderSizePixel = 0
+TopBar.Parent = MainFrame
+
+local TopCorner = Instance.new("UICorner")
+TopCorner.CornerRadius = UDim.new(0, 6)
+TopCorner.Parent = TopBar
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -65, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "컨트롤 패널 (미니)"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 13
+Title.Font = Enum.Font.SourceSansBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = TopBar
+
+local ScrollFrame = Instance.new("ScrollingFrame")
+ScrollFrame.Size = UDim2.new(1, -12, 1, -34)
+ScrollFrame.Position = UDim2.new(0, 6, 0, 31)
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.BorderSizePixel = 0
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 940)
+ScrollFrame.ScrollBarThickness = 3
+ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 85)
+ScrollFrame.Parent = MainFrame
+
+local Layout = Instance.new("UIListLayout")
+Layout.SortOrder = Enum.SortOrder.LayoutOrder
+Layout.Padding = UDim.new(0, 5)
+Layout.Parent = ScrollFrame
+
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Size = UDim2.new(0, 22, 0, 22)
+MinimizeBtn.Position = UDim2.new(1, -50, 0, 3)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+MinimizeBtn.Text = "-"
+MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeBtn.TextSize = 14
+MinimizeBtn.Font = Enum.Font.SourceSansBold
+MinimizeBtn.Parent = TopBar
+
+local MinCorner = Instance.new("UICorner")
+MinCorner.CornerRadius = UDim.new(0, 4)
+MinCorner.Parent = MinimizeBtn
+
+local isMinimized = false
+MinimizeBtn.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        MainFrame:TweenSize(UDim2.new(0, 260, 0, 28), "Out", "Quad", 0.2, true)
+        ScrollFrame.Visible = false
+        MinimizeBtn.Text = "+"
+    else
+        MainFrame:TweenSize(UDim2.new(0, 260, 0, 280), "Out", "Quad", 0.2, true)
+        ScrollFrame.Visible = true
+        MinimizeBtn.Text = "-"
+    end
+end)
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 22, 0, 22)
+CloseBtn.Position = UDim2.new(1, -25, 0, 3)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(60, 30, 30)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+CloseBtn.TextSize = 12
+CloseBtn.Font = Enum.Font.SourceSansBold
+CloseBtn.Parent = TopBar
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 4)
+CloseCorner.Parent = CloseBtn
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
+local function createSection(text)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, 0, 0, 20)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = "— " .. text .. " —"
+    lbl.TextColor3 = Color3.fromRGB(140, 140, 145)
+    lbl.TextSize = 12
+    lbl.Font = Enum.Font.SourceSansBold
+    lbl.Parent = ScrollFrame
+end
+
+local function createLabel(text, color)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, 0, 0, 16)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = color or Color3.fromRGB(160, 160, 160)
+    lbl.TextSize = 11
+    lbl.Font = Enum.Font.SourceSans
+    lbl.TextWrapped = true
+    lbl.Parent = ScrollFrame
+end
+
+local function createButton(text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 26)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(230, 230, 230)
+    btn.TextSize = 12
+    btn.Font = Enum.Font.SourceSans
+    btn.Parent = ScrollFrame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 4)
+    corner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+local function createToggle(text, default, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 26)
+    frame.BackgroundColor3 = Color3.fromRGB(35, 35, 38)
+    frame.Parent = ScrollFrame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 4)
+    corner.Parent = frame
+    
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0.7, 0, 1, 0)
+    lbl.Position = UDim2.new(0, 8)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = Color3.fromRGB(210, 210, 210)
+    lbl.TextSize = 12
+    lbl.Font = Enum.Font.SourceSans
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = frame
+    
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 42, 0, 18)
+    btn.Position = UDim2.new(1, -48, 0.5, -9)
+    btn.BackgroundColor3 = default and Color3.fromRGB(50, 130, 50) or Color3.fromRGB(60, 60, 65)
+    btn.Text = default and "ON" or "OFF"
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 10
+    btn.Font = Enum.Font.SourceSansBold
+    btn.Parent = frame
+    
+    local bCorner = Instance.new("UICorner")
+    bCorner.CornerRadius = UDim.new(0, 3)
+    bCorner.Parent = btn
+    
+    local state = default
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.Text = state and "ON" or "OFF"
+        btn.BackgroundColor3 = state and Color3.fromRGB(50, 130, 50) or Color3.fromRGB(60, 60, 65)
+        callback(state)
+    end)
+    
+    return function(newState)
+        state = newState
+        btn.Text = state and "ON" or "OFF"
+        btn.BackgroundColor3 = state and Color3.fromRGB(50, 130, 50) or Color3.fromRGB(60, 60, 65)
+    end
+end
+
+local function createTextBox(text, placeholder, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 26)
+    frame.BackgroundColor3 = Color3.fromRGB(35, 35, 38)
+    frame.Parent = ScrollFrame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 4)
+    corner.Parent = frame
+    
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0.6, 0, 1, 0)
+    lbl.Position = UDim2.new(0, 8)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = Color3.fromRGB(210, 210, 210)
+    lbl.TextSize = 12
+    lbl.Font = Enum.Font.SourceSans
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = frame
+    
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(0, 65, 0, 18)
+    box.Position = UDim2.new(1, -73, 0.5, -9)
+    box.BackgroundColor3 = Color3.fromRGB(24, 24, 26)
+    box.TextColor3 = Color3.fromRGB(255, 255, 255)
+    box.PlaceholderText = placeholder
+    box.Text = ""
+    box.TextSize = 11
+    box.Font = Enum.Font.SourceSans
+    box.ClearTextOnFocus = true
+    box.Parent = frame
+    
+    local bCorner = Instance.new("UICorner")
+    bCorner.CornerRadius = UDim.new(0, 3)
+    bCorner.Parent = box
+    
+    box.FocusLost:Connect(function()
+        callback(box.Text)
+    end)
+end
+
+local function createVisualColorPicker(name, defaultColor, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 65)
+    frame.BackgroundColor3 = Color3.fromRGB(35, 35, 38)
+    frame.Parent = ScrollFrame
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 4)
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0.5, 0, 0, 18)
+    lbl.Position = UDim2.new(0, 8, 0, 2)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = name
+    lbl.TextColor3 = Color3.fromRGB(210, 210, 210)
+    lbl.TextSize = 11
+    lbl.Font = Enum.Font.SourceSansBold
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = frame
+
+    local preview = Instance.new("Frame")
+    preview.Size = UDim2.new(0, 35, 0, 14)
+    preview.Position = UDim2.new(1, -43, 0, 4)
+    preview.BackgroundColor3 = defaultColor
+    preview.Parent = frame
+    Instance.new("UICorner", preview).CornerRadius = UDim.new(0, 3)
+
+    local spectrum = Instance.new("ImageButton")
+    spectrum.Size = UDim2.new(1, -24, 0, 14)
+    spectrum.Position = UDim2.new(0, 12, 0, 22)
+    spectrum.Image = "rbxassetid://6983758117"
+    spectrum.BorderSizePixel = 0
+    spectrum.Parent = frame
+    Instance.new("UICorner", spectrum).CornerRadius = UDim.new(0, 3)
+
+    local specPin = Instance.new("Frame")
+    specPin.Size = UDim2.new(0, 12, 0, 12)
+    specPin.AnchorPoint = Vector2.new(0.5, 0.5)
+    specPin.BackgroundColor3 = Color3.new(1, 1, 1)
+    specPin.Parent = spectrum
+    Instance.new("UICorner", specPin).CornerRadius = UDim.new(1, 0)
+    local sStroke = Instance.new("UIStroke")
+    sStroke.Thickness = 1.5
+    sStroke.Color = Color3.new(0,0,0)
+    sStroke.Parent = specPin
+
+    local vSlider = Instance.new("Frame")
+    vSlider.Size = UDim2.new(1, -24, 0, 12)
+    vSlider.Position = UDim2.new(0, 12, 0, 44)
+    vSlider.BorderSizePixel = 0
+    vSlider.Parent = frame
+    Instance.new("UICorner", vSlider).CornerRadius = UDim.new(0, 3)
+
+    local vGrad = Instance.new("UIGradient")
+    vGrad.Parent = vSlider
+
+    local vButton = Instance.new("ImageButton")
+    vButton.Size = UDim2.new(1, 0, 1, 0)
+    vButton.BackgroundTransparency = 1
+    vButton.Parent = vSlider
+
+    local vPin = Instance.new("Frame")
+    vPin.Size = UDim2.new(0, 12, 0, 12)
+    vPin.AnchorPoint = Vector2.new(0.5, 0.5)
+    vPin.BackgroundColor3 = Color3.new(1, 1, 1)
+    vPin.Parent = vSlider
+    Instance.new("UICorner", vPin).CornerRadius = UDim.new(1, 0)
+    local vStroke = Instance.new("UIStroke")
+    vStroke.Thickness = 1.5
+    vStroke.Color = Color3.new(0,0,0)
+    vStroke.Parent = vPin
+
+    local currentH, currentS, currentV = defaultColor:ToHSV()
+    specPin.Position = UDim2.new(currentH, 0, 0.5, 0)
+    vPin.Position = UDim2.new(currentV, 0, 0.5, 0)
+
+    local function updateSliderGrad()
+        vGrad.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.new(0, 0, 0)),
+            ColorSequenceKeypoint.new(1, Color3.fromHSV(currentH, 1, 1))
+        })
+    end
+    updateSliderGrad()
+
+    local function updateColor()
+        local resultColor = Color3.fromHSV(currentH, currentS, currentV)
+        preview.BackgroundColor3 = resultColor
+        callback(resultColor)
+    end
+
+    local function processSpec(input)
+        local inputPos = input.Position
+        local relativeX = math.clamp((inputPos.X - spectrum.AbsolutePosition.X) / spectrum.AbsoluteSize.X, 0, 1)
+        currentH = relativeX
+        specPin.Position = UDim2.new(relativeX, 0, 0.5, 0)
+        updateSliderGrad()
+        updateColor()
+    end
+
+    local function processV(input)
+        local inputPos = input.Position
+        local relativeX = math.clamp((inputPos.X - vSlider.AbsolutePosition.X) / vSlider.AbsoluteSize.X, 0, 1)
+        currentV = relativeX
+        vPin.Position = UDim2.new(relativeX, 0, 0.5, 0)
+        updateColor()
+    end
+
+    local activeSpec = false
+    spectrum.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            activeSpec = true
+            processSpec(input)
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if activeSpec and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            processSpec(input)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            activeSpec = false
+        end
+    end)
+
+    local activeV = false
+    vButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            activeV = true
+            processV(input)
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if activeV and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            processV(input)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            activeV = false
+        end
+    end)
+end
+
+createTextBox("레이어 수 (2~4)", "기본: 2", function(text)
+    local num = tonumber(text)
+    if num and num >= 2 and num <= 4 then
+        _G.GradientLayers = math.floor(num)
+        updateGradient()
+    end
+end)
+
+createVisualColorPicker("색상 1", _G.Color1, function(c) _G.Color1 = c updateGradient() end)
+createVisualColorPicker("색상 2", _G.Color2, function(c) _G.Color2 = c updateGradient() end)
+createVisualColorPicker("색상 3", _G.Color3_Val, function(c) _G.Color3_Val = c updateGradient() end)
+createVisualColorPicker("색상 4", _G.Color4, function(c) _G.Color4 = c updateGradient() end)
+
+local updateCustomToggleUi, updateRainbowToggleUi
+
+updateCustomToggleUi = createToggle("커스텀 그라데이션 적용", _G.CustomGradientEnabled, function(val)
+    _G.CustomGradientEnabled = val
+    if val then
+        _G.RainbowLoopEnabled = false
+        if updateRainbowToggleUi then updateRainbowToggleUi(false) end
+        updateGradient()
+    end
+end)
+
+createLabel("그라데이션 숫자를 입력해야 정상 작동합니다.", Color3.fromRGB(220, 160, 60))
+
+createSection("라인 색상 고정 프리셋")
+
+local function createPresetButton(name, colorPoints)
+    createButton(name, function()
+        _G.CustomGradientEnabled = false
+        _G.RainbowLoopEnabled = false
+        if updateCustomToggleUi then updateCustomToggleUi(false) end
+        if updateRainbowToggleUi then updateRainbowToggleUi(false) end
+        
+        if ReplicatedStorage:FindFirstChild("DataEvents") then
+            local success, err = pcall(function()
+                ReplicatedStorage.DataEvents.UpdateLineColorsEvent:FireServer(ColorSequence.new(colorPoints))
+            end)
+            if not success then
+                showBadge("오류: 프리셋 적용 실패 (" .. tostring(err) .. ")", Color3.fromRGB(220, 50, 50))
+            end
+        else
+            showBadge("오류: DataEvents 이벤트를 찾을 수 없습니다.", Color3.fromRGB(220, 50, 50))
+        end
+    end)
+end
+
+createPresetButton("무지개 프리셋", {
+    ColorSequenceKeypoint.new(0, Color3.new(1,0,0)), ColorSequenceKeypoint.new(0.16, Color3.new(1,1,0)),
+    ColorSequenceKeypoint.new(0.33, Color3.new(0,1,0)), ColorSequenceKeypoint.new(0.5, Color3.new(0,1,1)),
+    ColorSequenceKeypoint.new(0.66, Color3.new(0,0,1)), ColorSequenceKeypoint.new(0.83, Color3.new(1,0,1)),
+    ColorSequenceKeypoint.new(1, Color3.new(1,0,0))
+})
+createPresetButton("불꽃 프리셋", {ColorSequenceKeypoint.new(0, Color3.new(1,0,0)), ColorSequenceKeypoint.new(0.5, Color3.new(1,0.5,0)), ColorSequenceKeypoint.new(1, Color3.new(1,1,0))})
+createPresetButton("바다 프리셋", {ColorSequenceKeypoint.new(0, Color3.new(0,0,1)), ColorSequenceKeypoint.new(0.5, Color3.new(0,1,1)), ColorSequenceKeypoint.new(1, Color3.new(0,0.5,0.5))})
+createPresetButton("석양 프리셋", {ColorSequenceKeypoint.new(0, Color3.new(0.5,0,0.5)), ColorSequenceKeypoint.new(0.5, Color3.new(1,0,0.5)), ColorSequenceKeypoint.new(1, Color3.new(1,0.5,0))})
+createPresetButton("네온 프리셋", {ColorSequenceKeypoint.new(0, Color3.new(0,1,1)), ColorSequenceKeypoint.new(1, Color3.new(1,0,1))})
+createPresetButton("사이버펑크 프리셋", {ColorSequenceKeypoint.new(0, Color3.fromRGB(0,255,150)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255,0,120)), ColorSequenceKeypoint.new(1, Color3.fromRGB(0,200,255))})
+createPresetButton("갤럭시 프리셋", {ColorSequenceKeypoint.new(0, Color3.fromRGB(15,12,40)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(110,12,150)), ColorSequenceKeypoint.new(1, Color3.fromRGB(250,110,200))})
+createPresetButton("포레스트 프리셋", {ColorSequenceKeypoint.new(0, Color3.fromRGB(10,50,20)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(40,180,90)), ColorSequenceKeypoint.new(1, Color3.fromRGB(180,240,100))})
+createPresetButton("사쿠라 프리셋", {ColorSequenceKeypoint.new(0, Color3.fromRGB(255,180,200)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255,220,230)), ColorSequenceKeypoint.new(1, Color3.fromRGB(240,130,160))})
+createPresetButton("골드바 프리셋", {ColorSequenceKeypoint.new(0, Color3.fromRGB(100,70,10)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255,215,0)), ColorSequenceKeypoint.new(1, Color3.fromRGB(150,110,20))})
+createPresetButton("모노크롬 프리셋", {ColorSequenceKeypoint.new(0, Color3.fromRGB(20,20,20)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120,120,120)), ColorSequenceKeypoint.new(1, Color3.fromRGB(240,240,240))})
+createPresetButton("민트초코 프리셋", {ColorSequenceKeypoint.new(0, Color3.fromRGB(30,20,15)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150,255,220)), ColorSequenceKeypoint.new(1, Color3.fromRGB(50,30,20))})
+createPresetButton("일렉트릭 프리셋", {ColorSequenceKeypoint.new(0, Color3.fromRGB(255,100,0)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0,255,255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(200,0,255))})
+
+createSection("실시간 애니메이션 효과")
+
+updateRainbowToggleUi = createToggle("실시간 무지개 루프", _G.RainbowLoopEnabled, function(val)
+    _G.RainbowLoopEnabled = val
+    if val then
+        _G.CustomGradientEnabled = false
+        if updateCustomToggleUi then updateCustomToggleUi(false) end
+        
+        task.spawn(function()
+            while _G.RainbowLoopEnabled do
+                for i = 0, 1, 0.01 do
+                    if not _G.RainbowLoopEnabled then break end
+                    if ReplicatedStorage:FindFirstChild("DataEvents") then
+                        pcall(function()
+                            ReplicatedStorage.DataEvents.UpdateLineColorsEvent:FireServer(ColorSequence.new({
+                                ColorSequenceKeypoint.new(0, Color3.fromHSV(i, 1, 1)),
+                                ColorSequenceKeypoint.new(1, Color3.fromHSV((i + 0.5) % 1, 1, 1))
+                            }))
+                        end)
+                    end
+                    task.wait(0.05)
+                end
+            end
+        end)
+    end
+end)
+
+createSection("게임패스 잠금해제")
+
+createButton("긴줄 잠금해제", function()
+    if isReachApplied then
+        showBadge("이미 긴줄 기능이 적용되어 있습니다.", Color3.fromRGB(220, 130, 20))
+        return
+    end
+
+    local Reach = Instance.new("BoolValue")
+    local success, err = pcall(function()
+        Reach.Name = "FartherReach"
+        Reach.Parent = LocalPlayer
+        Reach.Value = true
+
+        local GamepassEvents = ReplicatedStorage:FindFirstChild("GamepassEvents")
+        local Notifier = GamepassEvents and GamepassEvents:FindFirstChild("FurtherReachBoughtNotifier")
+
+        if Notifier and getconnections then
+            for _, connection in ipairs(getconnections(Notifier.OnClientEvent)) do
+                pcall(connection.Function)
+            end
+        end
+    end)
+
+    if success then
+        isReachApplied = true
+        showBadge("긴줄 기능이 성공적으로 적용되었습니다!", Color3.fromRGB(50, 140, 50))
+    else
+        showBadge("오류: 긴줄 기능 적용 실패 (" .. tostring(err) .. ")", Color3.fromRGB(220, 50, 50))
+    end
+end)
+
+local dragToggle = false
+local dragStart
+local startPos
+
+TopBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragToggle = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragToggle and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragToggle = false
+    end
+end)
