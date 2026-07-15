@@ -11244,10 +11244,6 @@ function OrionLib:Destroy()
 	Orion:Destroy()
 end
 
-local sound = Instance.new("Sound")
-sound.SoundId = "rbxassetid://88657328640254"
-sound.Looped = false
-sound.Parent = game:GetService("SoundService")
-sound:Play()
+
 
 OrionLib:Init()
