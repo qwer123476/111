@@ -1,20 +1,4 @@
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 
--- [허용된 유저 ID 리스트]
-local AllowedIds = {
-    [4396960314] = true, -- 누나
-    [10472996475] = true, -- 나 부계
-    [2932138780] = true, -- 나
-    [10854413652] = true, -- 헬로
-    [2432461669] = true, -- 썸머
-}
-
--- [즉시 검사 및 킥]
-if not AllowedIds[LocalPlayer.UserId] then
-    LocalPlayer:Kick("인증되지 않은 유저입니다. 접속이 차단되었습니다.")
-    return -- 스크립트 실행 중단
-end
 
 
 
