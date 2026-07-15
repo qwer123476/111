@@ -2,8 +2,7 @@ local FN_BYPASS = false
 local TESTPP = false
 -- ================== Rayfield 안정 버전 (Build Mismatch 해결) ==================
 print("Rayfield 로드 시작...")
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-print("Rayfield 로드 완료")
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()print("Rayfield 로드 완료")
 Players = game:GetService("Players")
 plr = game.Players.LocalPlayer
 cam = workspace.CurrentCamera
