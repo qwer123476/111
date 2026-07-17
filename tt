@@ -1,0 +1,56 @@
+
+
+-- 撳掣之後嘅Action
+-- 呢度決定禁咗語言掣之後Load咩Script
+btnJapanese.MouseButton1Click:Connect(function()
+    GUI.Enabled = false
+    runAnimationScript(function()
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://pastefy.app/XSLP22c8/raw"))()
+        end)
+        if not success then
+            warn("Japanese script loading error: " .. tostring(err))
+        end
+        GUI.Enabled = true
+    end)
+end)
+
+btnEnglish.MouseButton1Click:Connect(function()
+    GUI.Enabled = false
+    runAnimationScript(function()
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://pastefy.app/Pngi0HqM/raw"))()
+        end)
+        if not success then
+            warn("English script loading error: " .. tostring(err))
+        end
+        GUI.Enabled = true
+    end)
+end)
+
+btnVietnamese.MouseButton1Click:Connect(function()
+    GUI.Enabled = false
+    runAnimationScript(function()
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://pastefy.app/CQxoyleA/raw"))()
+        end)
+        if not success then
+            warn("Vietnamese script loading error: " .. tostring(err))
+        end
+        GUI.Enabled = true
+    end)
+end)
+
+-- 一開始Show個提示 叫人入密碼
+-- 呢個係引導用戶比錢嘅第一步
+coroutine.wrap(function()
+    wait(2)
+    local notification = Instance.new("Message")
+    notification.Text = "🔐 入啱密碼就可以解鎖Script-Box_ed loaderv3"
+    notification.Parent = workspace
+    wait(4)
+    notification:Destroy()
+end)()
+
+print("Script-Box_ed GUI loaded successfully with " .. #textureIds .. " ads!")
+-- 總共有咁多廣告 Loadv3完晒 可以開始搵錢了
