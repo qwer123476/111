@@ -22,10 +22,7 @@ if game.PlaceId ~= 6961824067 then
     return
 end
 
-if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
-    LocalPlayer:Kick("Script not for phone")
-    return
-end
+
 
 do
     local execName = nil
