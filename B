@@ -1,4 +1,4 @@
-print('discord.gg/25ms was here')
+
 local _Players = game:GetService('Players')
 local u3 = loadstring(game:HttpGet('http://you.whimper.xyz/sources/blitz/orionx'))()
 local _Debris = game:GetService('Debris')
@@ -928,7 +928,7 @@ local function u224(p212)
 						end
 						if _bodygyro then
 							_bodygyro.P = 40000
-							_bodygyro.D = 200
+							--_bodygyro.D = 200
 							_bodygyro.CFrame = v223.CFrame * v220.offset
 						end
 					end
